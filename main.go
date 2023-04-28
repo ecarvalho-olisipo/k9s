@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os/exec"
 
 	"github.com/derailed/k9s/cmd"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -26,5 +27,7 @@ func init() {
 }
 
 func main() {
+	shell := exec.Command("osprey", "user", "login", "-g", "dev")
+	shell.Run()
 	cmd.Execute()
 }

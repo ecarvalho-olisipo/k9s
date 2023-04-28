@@ -1,6 +1,7 @@
 package client
 
 import (
+	"os/exec"
 	"context"
 	"errors"
 	"fmt"
@@ -140,7 +141,25 @@ func (a *APIClient) CanI(ns, gvr string, verbs []string) (auth bool, err error) 
 	defer a.mx.Unlock()
 
 	if !a.connOK {
-		return false, errors.New("ACCESS -- No API server connection")
+		cmd := exec.Command("osprey", "user", "login", "-g", "dev")
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return false, errors.New("ACCESS -- No API server connection")
+		}
+		// Need reload to pick up any kubeconfig changes.
+		cfg, err := NewConfig(a.config.flags).RESTConfig()
+		if err != nil {
+			log.Error().Err(err).Msgf("restConfig load failed")
+			return false, errors.New("ACCESS -- No API server connection")
+		}
+		cfg.Timeout = a.config.CallTimeout()
+		_, err2 := kubernetes.NewForConfig(cfg)
+		if err2 != nil {
+			log.Error().Err(err).Msgf("Unable to connect to api server")
+			a.connOK = false
+			return false, errors.New("ACCESS -- No API server connection")
+		}	
 	}
 	if IsClusterWide(ns) {
 		ns = AllNamespaces
